@@ -4,6 +4,7 @@ import { getAllJobs, createJob, updateJob, deleteJob, getJobById } from '../lib/
 import { findById as findUserById } from '../lib/userStore.js';
 import { getConfig } from '../lib/configStore.js';
 import { addLog } from '../lib/logStore.js';
+import { incrementStatusCount } from '../lib/statusCountStore.js';
 import { requireAuth } from '../lib/auth.js';
 
 const router = Router();
@@ -17,6 +18,7 @@ const FIELD_LABELS = {
   name: 'Project name',
   designerId: 'Current designer',
   account: 'Account',
+  jobAccount: 'Job account',
   client: 'Client',
   projectType: 'Project type',
   startDate: 'Start date',
@@ -47,6 +49,7 @@ router.post('/', requireAuth, async (req, res) => {
     designerId: b.designerId,
     startedBy: b.designerId,
     account: b.account || '',
+    jobAccount: b.jobAccount || '',
     client: b.client || '',
     projectType: b.projectType || '',
     name: b.name,
@@ -65,6 +68,7 @@ router.post('/', requireAuth, async (req, res) => {
     createdBy: req.userId,
   };
   await createJob(job);
+  await incrementStatusCount(job.status);
 
   const actor = await findUserById(req.userId);
   await addLog({
@@ -90,6 +94,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
   delete updates.createdAt;
   delete updates.createdBy;
   delete updates.startedBy;
+  delete updates.jobNumber;
 
   const isAdmin = req.userRole === 'admin';
   if (!isAdmin) {
@@ -121,6 +126,10 @@ router.patch('/:id', requireAuth, async (req, res) => {
   }
 
   const updated = await updateJob(req.params.id, updates);
+
+  if (updates.status && updates.status !== existing.status) {
+    await incrementStatusCount(updates.status);
+  }
 
   const changedFields = Object.keys(updates).filter((f) => FIELD_LABELS[f] && updates[f] !== existing[f]);
   if (changedFields.length) {

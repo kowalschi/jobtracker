@@ -10,6 +10,7 @@ export function DataProvider({ children }) {
   const [users, setUsers] = useState([]);
   const [config, setConfig] = useState(null);
   const [requests, setRequests] = useState([]);
+  const [statusCounts, setStatusCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -17,14 +18,16 @@ export function DataProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const [jobsRes, usersRes, configRes] = await Promise.all([
+      const [jobsRes, usersRes, configRes, statusCountsRes] = await Promise.all([
         api.getJobs(),
         api.getUsers(),
         api.getConfig(),
+        api.getStatusCounts(),
       ]);
       setJobs(jobsRes.jobs);
       setUsers(usersRes.users);
       setConfig(configRes.config);
+      setStatusCounts(statusCountsRes.counts);
       if (user?.role === 'admin') {
         const requestsRes = await api.getRequests();
         setRequests(requestsRes.requests);
@@ -45,12 +48,18 @@ export function DataProvider({ children }) {
   const createJob = useCallback(async (payload) => {
     const { job } = await api.createJob(payload);
     setJobs((prev) => [...prev, job]);
+    const { counts } = await api.getStatusCounts();
+    setStatusCounts(counts);
     return job;
   }, []);
 
   const updateJob = useCallback(async (id, payload) => {
     const { job } = await api.updateJob(id, payload);
     setJobs((prev) => prev.map((j) => (j.id === id ? job : j)));
+    if (payload.status !== undefined) {
+      const { counts } = await api.getStatusCounts();
+      setStatusCounts(counts);
+    }
     return job;
   }, []);
 
@@ -120,6 +129,7 @@ export function DataProvider({ children }) {
         users,
         config,
         requests,
+        statusCounts,
         loading,
         error,
         refresh,

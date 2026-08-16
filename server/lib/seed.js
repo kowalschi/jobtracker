@@ -1,5 +1,6 @@
 import { getUsers, createUser } from './userStore.js';
 import { getConfig } from './configStore.js';
+import { backfillJobNumbers } from './jobStore.js';
 
 const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'constantindan@gmail.com';
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ChangeMe123!';
@@ -22,4 +23,6 @@ export async function seed() {
     console.log('Please log in and change this password from the Dashboard.');
     console.log('---------------------------------------------------------');
   }
+
+  await backfillJobNumbers();
 }

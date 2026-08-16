@@ -17,6 +17,11 @@ server/public
 server/data
 server/.env
 .env
+server.zip
+*.zip
+
+# Local tool config
+.claude/settings.local.json
 
 # Editor directories and files
 .vscode/*
@@ -28,3 +33,4 @@ server/.env
 *.njsproj
 *.sln
 *.sw?
+.history/

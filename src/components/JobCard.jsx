@@ -9,7 +9,10 @@ export function JobCard({ job, designer, config, onOpen, onBumpFeedback, onQuick
       onClick={() => onOpen(job)}
     >
       <div className="job-card-top">
-        <span className="tag tag-type">{job.projectType || 'N/A'}</span>
+        <div className="job-card-top-left">
+          <span className="job-card-number">#{job.jobNumber ?? '—'}</span>
+          <span className="tag tag-type">{job.projectType || 'N/A'}</span>
+        </div>
         <span className="tag tag-priority" style={{ background: priorityColor(job.priority) }}>
           {job.priority}
         </span>
@@ -20,6 +23,13 @@ export function JobCard({ job, designer, config, onOpen, onBumpFeedback, onQuick
         {job.account && <span>{job.account}</span>}
         {job.client && <span>· {job.client}</span>}
       </div>
+
+      {job.jobAccount && (
+        <div className="job-card-jobaccount">
+          <span className="job-card-field-label">Job account</span>
+          <span>{job.jobAccount}</span>
+        </div>
+      )}
 
       <div className="job-card-dates">
         <span>{formatDate(job.startDate)}</span>

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readJSON, writeJSON, fileSizeBytes, listDir, listSubdirs, withLock } from './fileStore.js';
-import { JOBS_DIR, JOBS_INDEX_FILE, SHARD_MAX_BYTES, SHARD_MAX_RECORDS } from './paths.js';
+import { JOBS_DIR, JOBS_INDEX_FILE, JOBS_COUNTER_FILE, SHARD_MAX_BYTES, SHARD_MAX_RECORDS } from './paths.js';
 
 // Jobs are stored per-designer, one JSON array per shard file
 // (data/jobs/<designerId>/jobs-1.json, jobs-2.json, ...). Once a shard
@@ -88,10 +88,47 @@ async function appendToDesigner(designerId, job) {
   await saveIndex(index);
 }
 
+async function nextJobNumber() {
+  const current = await readJSON(JOBS_COUNTER_FILE, 0);
+  const next = current + 1;
+  await writeJSON(JOBS_COUNTER_FILE, next);
+  return next;
+}
+
 export async function createJob(job) {
   return withLock(async () => {
+    job.jobNumber = await nextJobNumber();
     await appendToDesigner(job.designerId, job);
     return job;
+  });
+}
+
+// One-time backfill for jobs created before job numbers existed. Assigns
+// numbers in creation order and advances the shared counter past them.
+// Safe to call on every startup — a no-op once every job has a number.
+export async function backfillJobNumbers() {
+  return withLock(async () => {
+    const all = await getAllJobs();
+    const missing = all.filter((j) => !j.jobNumber);
+    if (!missing.length) return;
+
+    missing.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    let counter = await readJSON(JOBS_COUNTER_FILE, 0);
+    const index = await loadIndex();
+
+    for (const job of missing) {
+      counter += 1;
+      const entry = index[job.id];
+      if (!entry) continue;
+      const filePath = shardPath(entry.designerId, entry.shard);
+      const jobs = await readJSON(filePath, []);
+      const idx = jobs.findIndex((j) => j.id === job.id);
+      if (idx === -1) continue;
+      jobs[idx] = { ...jobs[idx], jobNumber: counter };
+      await writeJSON(filePath, jobs);
+    }
+
+    await writeJSON(JOBS_COUNTER_FILE, counter);
   });
 }
 

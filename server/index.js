@@ -11,6 +11,7 @@ import configRoutes from './routes/config.js';
 import jobRoutes from './routes/jobs.js';
 import logRoutes from './routes/logs.js';
 import requestRoutes from './routes/requests.js';
+import statusCountRoutes from './routes/statusCounts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -28,6 +29,7 @@ app.use('/api/config', configRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/status-counts', statusCountRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Serves the built frontend (see scripts/prepare-deploy.mjs) so this one

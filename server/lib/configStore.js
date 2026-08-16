@@ -6,7 +6,7 @@ export const DEFAULT_CONFIG = {
   clients: [],
   projectTypes: ['DTP', 'DIGITAL', 'VIDEO'],
   responseStatuses: ['Finished', 'At client agency'],
-  jobStatuses: ['To do', 'In progress', 'In feedback', 'Revision', 'Done'],
+  jobStatuses: ['To do', 'Checking job', 'Sent to agency for response', 'Working on feedback', 'Done'],
   priorities: ['Low', 'Medium', 'High', 'Urgent'],
 };
 

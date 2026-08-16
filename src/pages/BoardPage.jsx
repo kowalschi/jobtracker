@@ -10,8 +10,19 @@ const PRIORITY_RANK = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
 
 export function BoardPage() {
   const { user } = useAuth();
-  const { jobs, users, config, loading, error, createJob, updateJob, deleteJob, bumpFeedback, createChangeRequest } =
-    useData();
+  const {
+    jobs,
+    users,
+    config,
+    statusCounts,
+    loading,
+    error,
+    createJob,
+    updateJob,
+    deleteJob,
+    bumpFeedback,
+    createChangeRequest,
+  } = useData();
 
   const [filters, setFilters] = useState({ designerId: 'all', projectType: 'all', account: 'all', search: '' });
   const [view, setView] = useState('board');
@@ -90,7 +101,9 @@ export function BoardPage() {
             <div className="kanban-column" key={status}>
               <div className="kanban-column-header">
                 <span>{status}</span>
-                <span className="count-pill">{jobsByStatus[status]?.length || 0}</span>
+                <span className="count-pill" title="Times a job has moved into this status">
+                  {statusCounts[status] || 0}
+                </span>
               </div>
               <div className="kanban-column-body">
                 {(jobsByStatus[status] || []).map((job) => (
@@ -113,6 +126,7 @@ export function BoardPage() {
           <table className="job-table">
             <thead>
               <tr>
+                <th>#</th>
                 <th>Job</th>
                 <th>Current designer</th>
                 <th>Account / Client</th>
@@ -131,6 +145,7 @@ export function BoardPage() {
                 const designer = usersById[job.designerId];
                 return (
                   <tr key={job.id} onClick={() => setActiveJob(job)}>
+                    <td className="job-table-jobnumber">#{job.jobNumber ?? '—'}</td>
                     <td className="job-table-name">{job.name}</td>
                     <td>
                       <span className="avatar avatar-sm" style={{ background: designer?.color || '#9AA5B1' }}>

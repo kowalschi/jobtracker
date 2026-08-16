@@ -55,6 +55,8 @@ export const api = {
 
   getLogs: () => request('/logs'),
 
+  getStatusCounts: () => request('/status-counts'),
+
   getRequests: () => request('/requests'),
   createChangeRequest: (jobId, field, requestedValue) =>
     request('/requests', { method: 'POST', body: { jobId, field, requestedValue } }),

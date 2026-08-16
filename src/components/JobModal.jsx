@@ -62,6 +62,7 @@ function RequestChangeInline({ job, field, onRequestChange, type = 'text', optio
 const emptyJob = {
   designerId: '',
   account: '',
+  jobAccount: '',
   client: '',
   projectType: '',
   name: '',
@@ -136,7 +137,7 @@ export function JobModal({ job, users, config, onClose, onCreate, onUpdate, onDe
     <div className="modal-overlay" onClick={onClose}>
       <form className="modal-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <div className="modal-header">
-          <h2>{isNew ? 'New job' : form.name}</h2>
+          <h2>{isNew ? 'New job' : `#${job.jobNumber ?? '—'} ${form.name}`}</h2>
           <button type="button" className="btn-ghost" onClick={onClose}>
             ✕
           </button>
@@ -214,6 +215,11 @@ export function JobModal({ job, users, config, onClose, onCreate, onUpdate, onDe
                 ))}
               </select>
             )}
+          </label>
+
+          <label>
+            Job account
+            <input value={form.jobAccount} onChange={(e) => set('jobAccount', e.target.value)} placeholder="e.g. internal reference" />
           </label>
 
           <label>

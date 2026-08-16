@@ -87,7 +87,10 @@
 
 /* Buttons */
 
-.btn-primary, .btn-secondary, .btn-ghost, .btn-danger {
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-danger {
   border: none;
   border-radius: 8px;
   padding: 9px 16px;
@@ -100,28 +103,45 @@
   background: var(--accent);
   color: white;
 }
-.btn-primary:hover { background: var(--accent-hover); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .btn-secondary {
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
 }
-.btn-secondary:hover { background: #e9ecf5; }
+
+.btn-secondary:hover {
+  background: #e9ecf5;
+}
 
 .btn-ghost {
   background: transparent;
   color: var(--text-muted);
   padding: 8px 10px;
 }
-.btn-ghost:hover { color: var(--text); background: var(--bg); }
+
+.btn-ghost:hover {
+  color: var(--text);
+  background: var(--bg);
+}
 
 .btn-danger {
   background: var(--danger-bg);
   color: var(--danger);
 }
-.btn-danger:hover { background: #fbdcd9; }
+
+.btn-danger:hover {
+  background: #fbdcd9;
+}
 
 /* Avatars */
 
@@ -198,7 +218,9 @@ label {
   color: var(--text-muted);
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   padding: 9px 11px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -207,7 +229,9 @@ input, select, textarea {
   font-size: 14px;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
@@ -244,7 +268,8 @@ input:focus, select:focus, textarea:focus {
   flex-wrap: wrap;
 }
 
-.filter-group select, .filter-group input {
+.filter-group select,
+.filter-group input {
   min-width: 140px;
 }
 
@@ -345,6 +370,19 @@ input:focus, select:focus, textarea:focus {
 .job-card-top {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.job-card-top-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.job-card-number {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
 .tag {
@@ -379,6 +417,21 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
   display: flex;
   gap: 6px;
+}
+
+.job-card-jobaccount {
+  font-size: 12px;
+  display: flex;
+  gap: 4px;
+}
+
+.job-card-field-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.job-card-field-label::after {
+  content: ':';
 }
 
 .job-card-response {
@@ -513,6 +566,11 @@ input:focus, select:focus, textarea:focus {
   font-weight: 600;
 }
 
+.job-table-jobnumber {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .status-pill {
   background: var(--bg);
   padding: 3px 10px;
@@ -595,7 +653,8 @@ input:focus, select:focus, textarea:focus {
   flex-wrap: wrap;
 }
 
-.request-change-form input, .request-change-form select {
+.request-change-form input,
+.request-change-form select {
   flex: 1;
   min-width: 100px;
 }
@@ -670,7 +729,8 @@ input:focus, select:focus, textarea:focus {
   flex-wrap: wrap;
 }
 
-.add-designer-form input, .add-designer-form select {
+.add-designer-form input,
+.add-designer-form select {
   flex: 1;
   min-width: 160px;
 }
@@ -729,8 +789,20 @@ input:focus, select:focus, textarea:focus {
 }
 
 @media (max-width: 720px) {
-  .modal-grid { grid-template-columns: 1fr; }
-  .span-2 { grid-column: span 1; }
-  .app-main { padding: 16px; }
-  .navbar { padding: 12px 16px; flex-wrap: wrap; }
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span-2 {
+    grid-column: span 1;
+  }
+
+  .app-main {
+    padding: 16px;
+  }
+
+  .navbar {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
 }
