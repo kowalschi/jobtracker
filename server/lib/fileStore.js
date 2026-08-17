@@ -47,13 +47,11 @@ export async function writeJSON(filePath, data) {
   });
 }
 
-export async function fileSizeBytes(filePath) {
+export async function deleteFile(filePath) {
   try {
-    const stat = await fs.stat(filePath);
-    return stat.size;
+    await fs.unlink(filePath);
   } catch (err) {
-    if (err.code === 'ENOENT') return 0;
-    throw err;
+    if (err.code !== 'ENOENT') throw err;
   }
 }
 

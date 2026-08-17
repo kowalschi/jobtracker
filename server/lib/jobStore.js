@@ -1,29 +1,37 @@
 import path from 'node:path';
-import { readJSON, writeJSON, fileSizeBytes, listDir, listSubdirs, withLock } from './fileStore.js';
-import { JOBS_DIR, JOBS_INDEX_FILE, JOBS_COUNTER_FILE, SHARD_MAX_BYTES, SHARD_MAX_RECORDS } from './paths.js';
+import { readJSON, writeJSON, deleteFile, listDir, listSubdirs, withLock } from './fileStore.js';
+import { JOBS_DIR, JOBS_INDEX_FILE, JOBS_COUNTER_FILE } from './paths.js';
 
-// Jobs are stored per-designer, one JSON array per shard file
-// (data/jobs/<designerId>/jobs-1.json, jobs-2.json, ...). Once a shard
-// passes SHARD_MAX_BYTES or SHARD_MAX_RECORDS, new jobs roll into the next
-// shard file instead of growing that file forever.
-// _index.json maps jobId -> { designerId, shard } so single-job lookups
-// don't require scanning every shard of every designer.
+// Jobs are stored per-designer, one JSON file per calendar month
+// (data/jobs/<designerId>/<YYYY-MM>.json), keyed by the month the job was
+// CREATED in — a job keeps living in that same file for its whole life,
+// even if it's later reassigned to another designer or edited months later.
+// This keeps each file small (a month's worth of one person's jobs) instead
+// of one ever-growing file per designer.
+// _index.json maps jobId -> { designerId, month } so single-job lookups
+// don't require scanning every month file of every designer.
 
 function designerDir(designerId) {
   return path.join(JOBS_DIR, designerId);
 }
 
-function shardPath(designerId, shardNum) {
-  return path.join(designerDir(designerId), `jobs-${shardNum}.json`);
+function monthKey(dateInput) {
+  const d = new Date(dateInput);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${yyyy}-${mm}`;
 }
 
-async function shardNumbers(designerId) {
+function shardPath(designerId, month) {
+  return path.join(designerDir(designerId), `${month}.json`);
+}
+
+async function monthKeys(designerId) {
   const files = await listDir(designerDir(designerId));
   return files
-    .map((f) => f.match(/^jobs-(\d+)\.json$/))
-    .filter(Boolean)
-    .map((m) => Number(m[1]))
-    .sort((a, b) => a - b);
+    .filter((f) => /^\d{4}-\d{2}\.json$/.test(f))
+    .map((f) => f.replace('.json', ''))
+    .sort();
 }
 
 async function loadIndex() {
@@ -38,9 +46,9 @@ export async function getAllJobs() {
   const designerIds = await listSubdirs(JOBS_DIR);
   const all = [];
   for (const designerId of designerIds) {
-    const nums = await shardNumbers(designerId);
-    for (const n of nums) {
-      const jobs = await readJSON(shardPath(designerId, n), []);
+    const keys = await monthKeys(designerId);
+    for (const key of keys) {
+      const jobs = await readJSON(shardPath(designerId, key), []);
       all.push(...jobs);
     }
   }
@@ -48,10 +56,10 @@ export async function getAllJobs() {
 }
 
 export async function getJobsByDesigner(designerId) {
-  const nums = await shardNumbers(designerId);
+  const keys = await monthKeys(designerId);
   const jobs = [];
-  for (const n of nums) {
-    jobs.push(...(await readJSON(shardPath(designerId, n), [])));
+  for (const key of keys) {
+    jobs.push(...(await readJSON(shardPath(designerId, key), [])));
   }
   return jobs;
 }
@@ -60,31 +68,21 @@ export async function getJobById(jobId) {
   const index = await loadIndex();
   const entry = index[jobId];
   if (!entry) return null;
-  const jobs = await readJSON(shardPath(entry.designerId, entry.shard), []);
+  const jobs = await readJSON(shardPath(entry.designerId, entry.month), []);
   return jobs.find((j) => j.id === jobId) || null;
 }
 
-// Appends a job to a designer's current (last) shard, rolling over to a
-// new shard file first if the current one is full.
+// Appends a job to the designer's file for the month the job was created in
+// (not the current month — matters when a job is reassigned later).
 async function appendToDesigner(designerId, job) {
-  const nums = await shardNumbers(designerId);
-  let shardNum = nums.length ? nums[nums.length - 1] : 1;
-  let jobs = await readJSON(shardPath(designerId, shardNum), []);
-
-  const wouldBeFull =
-    jobs.length >= SHARD_MAX_RECORDS ||
-    (await fileSizeBytes(shardPath(designerId, shardNum))) >= SHARD_MAX_BYTES;
-
-  if (nums.length && wouldBeFull) {
-    shardNum = nums[nums.length - 1] + 1;
-    jobs = [];
-  }
-
+  const month = monthKey(job.createdAt);
+  const filePath = shardPath(designerId, month);
+  const jobs = await readJSON(filePath, []);
   jobs.push(job);
-  await writeJSON(shardPath(designerId, shardNum), jobs);
+  await writeJSON(filePath, jobs);
 
   const index = await loadIndex();
-  index[job.id] = { designerId, shard: shardNum };
+  index[job.id] = { designerId, month };
   await saveIndex(index);
 }
 
@@ -120,7 +118,7 @@ export async function backfillJobNumbers() {
       counter += 1;
       const entry = index[job.id];
       if (!entry) continue;
-      const filePath = shardPath(entry.designerId, entry.shard);
+      const filePath = shardPath(entry.designerId, entry.month);
       const jobs = await readJSON(filePath, []);
       const idx = jobs.findIndex((j) => j.id === job.id);
       if (idx === -1) continue;
@@ -132,13 +130,63 @@ export async function backfillJobNumbers() {
   });
 }
 
+// One-time migration from the old size-based shard files (jobs-1.json,
+// jobs-2.json, ...) to the new one-file-per-month layout. Safe to call on
+// every startup — a no-op once no old-style shard files remain.
+export async function migrateToMonthlyShards() {
+  return withLock(async () => {
+    const designerIds = await listSubdirs(JOBS_DIR);
+    let migratedAny = false;
+
+    for (const designerId of designerIds) {
+      const dir = designerDir(designerId);
+      const files = await listDir(dir);
+      const oldFiles = files.filter((f) => /^jobs-\d+\.json$/.test(f));
+      if (!oldFiles.length) continue;
+
+      migratedAny = true;
+      const byMonth = new Map();
+      for (const f of oldFiles) {
+        const jobs = await readJSON(path.join(dir, f), []);
+        for (const job of jobs) {
+          const key = monthKey(job.createdAt);
+          if (!byMonth.has(key)) byMonth.set(key, []);
+          byMonth.get(key).push(job);
+        }
+      }
+
+      for (const [key, jobs] of byMonth) {
+        const targetPath = shardPath(designerId, key);
+        const existing = await readJSON(targetPath, []);
+        await writeJSON(targetPath, [...existing, ...jobs]);
+      }
+
+      for (const f of oldFiles) {
+        await deleteFile(path.join(dir, f));
+      }
+    }
+
+    if (migratedAny) {
+      const index = {};
+      for (const designerId of designerIds) {
+        const keys = await monthKeys(designerId);
+        for (const key of keys) {
+          const jobs = await readJSON(shardPath(designerId, key), []);
+          for (const job of jobs) index[job.id] = { designerId, month: key };
+        }
+      }
+      await saveIndex(index);
+    }
+  });
+}
+
 export async function updateJob(jobId, updates) {
   return withLock(async () => {
     const index = await loadIndex();
     const entry = index[jobId];
     if (!entry) return null;
 
-    const currentPath = shardPath(entry.designerId, entry.shard);
+    const currentPath = shardPath(entry.designerId, entry.month);
     const jobs = await readJSON(currentPath, []);
     const jobIndex = jobs.findIndex((j) => j.id === jobId);
     if (jobIndex === -1) return null;
@@ -167,7 +215,7 @@ export async function deleteJob(jobId) {
     const entry = index[jobId];
     if (!entry) return false;
 
-    const filePath = shardPath(entry.designerId, entry.shard);
+    const filePath = shardPath(entry.designerId, entry.month);
     const jobs = await readJSON(filePath, []);
     const next = jobs.filter((j) => j.id !== jobId);
     await writeJSON(filePath, next);

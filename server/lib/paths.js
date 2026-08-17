@@ -13,7 +13,7 @@ export const LOG_FILE = path.join(DATA_DIR, 'activity.json');
 export const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json');
 export const STATUS_COUNTS_FILE = path.join(DATA_DIR, 'statusCounts.json');
 
-// A designer's jobs are sharded across numbered files once a shard grows
-// past this size, so no single JSON file grows unbounded.
-export const SHARD_MAX_BYTES = 500 * 1024; // 500 KB
-export const SHARD_MAX_RECORDS = 300;
+// DATA_DIR must never live inside server/public — that folder is served
+// as static web content (see server/index.js), and anything under it is
+// reachable by anyone who guesses the URL. DATA_DIR is a sibling of
+// server/public, not a descendant of it — keep it that way.
