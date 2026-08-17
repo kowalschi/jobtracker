@@ -25,18 +25,25 @@ Job tracker for a small design team. React/Vite frontend, Express backend,
   - Deploy flow: run `npm run build:deploy` locally (builds the frontend and
     copies it into `server/public/`), then upload `server/`'s contents
     (minus `data/` and `.env`) to the server.
-  - **SSL: unresolved as of last check.** DNS is correctly pointed and the
-    app is reachable over plain HTTP. KonsoleH's SSL section only showed
-    **paid** certificates on this plan (no free Let's Encrypt option found).
-    Two options were on the table, no decision made yet:
-    1. Buy the paid cert directly through Hetzner (simplest, no other
-       changes).
-    2. Route through Cloudflare's free tier instead (requires changing the
-       domain's nameservers to Cloudflare, DNS management then moves there,
-       set SSL mode to "Flexible" since the origin server itself has no
-       cert).
-  - **Pick this up next**: resolve SSL, confirm `https://innojobtracker.de`
-    loads clean.
+  - **SSL: resolved.** `https://innojobtracker.de` is live. KonsoleH only
+    offered paid certs on this plan (no free Let's Encrypt), so went with
+    Cloudflare instead: domain's nameservers point to Cloudflare
+    (`lewis.ns.cloudflare.com` / `journey.ns.cloudflare.com`), which issues
+    its own free edge certificate to visitors. Cloudflare's SSL/TLS mode is
+    set to **Flexible** — this matters: Hetzner's origin has no certificate
+    of its own (hitting it directly on port 443 shows Hetzner's "HTTPS Not
+    Available" placeholder), so Cloudflare must talk to the origin over
+    plain HTTP (port 80), not HTTPS. If this ever gets switched to "Full"
+    mode, it will break again with that same placeholder page reappearing —
+    either install a real cert on the Hetzner origin first, or leave it on
+    Flexible.
+  - DNS/TLS troubleshooting note: a stale resolver cache (home ISP/router,
+    separate from Windows' own cache) can keep serving pre-Cloudflare IPs
+    for a while after a nameserver change — `ipconfig /flushdns` only
+    clears the local Windows cache, not upstream ones. If something looks
+    broken again, verify against a public resolver first (e.g.
+    `nslookup -type=A innojobtracker.de 8.8.8.8`) before assuming the
+    server/Cloudflare config is actually wrong.
 
 - **Vercel** (`jobtracker-gilt.vercel.app`): an earlier deployment attempt,
   frontend-only (Vercel serverless functions can't run this app's
